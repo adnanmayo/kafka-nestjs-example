@@ -1,0 +1,107 @@
+version: "3.5"
+
+services:
+  db:
+    image: postgres
+    restart: always
+    environment:
+      - POSTGRES_PASSWORD=postgres
+    container_name: postgres
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  order-service:
+    build:
+      context: ./order-service
+      dockerfile: Dockerfile
+    container_name: order-service
+    environment:
+      - PORT=${ORDER_SERVICE_PORT}
+      - KAFKAJS_NO_PARTITIONER_WARNING=1
+    ports:
+      - "${ORDER_SERVICE_PORT}:${ORDER_SERVICE_PORT}"
+    depends_on:
+      - db
+      - kafka
+    volumes:
+      - ./order-service:/app/src
+      - ./order-service/node_modules:/app/src/node_modules
+
+  product-service:
+    build:
+      context: ./product-service
+      dockerfile: Dockerfile
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '0.001'
+    #       memory: 50M
+    #     reservations:
+    #       cpus: '0.0001'
+    #       memory: 20M
+    container_name: product-service
+    environment:
+      - PORT=${PRODUCT_SERVICE_PORT}
+      - KAFKAJS_NO_PARTITIONER_WARNING=1
+    ports:
+      - "${PRODUCT_SERVICE_PORT}:${PRODUCT_SERVICE_PORT}"
+    depends_on:
+      - db
+      - kafka
+    volumes:
+      - ./product-service:/app/src
+      - ./product-service/node_modules:/app/src/node_modules
+
+  user-service:
+    build:
+      context: ./user-service
+      dockerfile: Dockerfile
+    container_name: user-service
+    environment:
+      - PORT=${USER_SERVICE_PORT}
+      - KAFKAJS_NO_PARTITIONER_WARNING=1
+    ports:
+      - "${USER_SERVICE_PORT}:${USER_SERVICE_PORT}"
+    depends_on:
+      - db
+      - kafka
+    volumes:
+      - ./user-service:/app/src
+      - ./user-service/node_modules:/app/src/node_modules
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - 22181:2181
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    depends_on:
+      - zookeeper
+    ports:
+      - 29092:29092
+      - 9092:9092
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  pgadmin:
+    image: dpage/pgadmin4
+    restart: always
+    container_name: nest-pgadmin4
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@admin.com
+      - PGADMIN_DEFAULT_PASSWORD=pgadmin4
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
