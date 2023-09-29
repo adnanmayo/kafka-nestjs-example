@@ -12,6 +12,12 @@ There are three services
 
 in the root of the application run
 ```bash
+
+cp .env.example .env
+cp ./order-service/.env.example ./order-service/.env
+cp ./product-service/.env.example ./product-service/.env 
+cp ./user-service/.env.example ./user-service/.env
+
 docker compose up --build
 ```
 It will automatically install the necessary dependencies.
